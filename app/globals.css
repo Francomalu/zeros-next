@@ -3,8 +3,7 @@
 @tailwind utilities;
 
 /* Import Google Fonts */
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Raleway:wght@300;400;500;600;700&display=swap");
-
+/* Import Google Fonts */
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -75,7 +74,6 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
-    font-family: "Raleway", sans-serif;
   }
   html {
     scroll-behavior: smooth;
@@ -87,7 +85,6 @@
   h5,
   h6,
   .font-display {
-    font-family: "Montserrat", sans-serif;
     font-weight: 700;
   }
 }

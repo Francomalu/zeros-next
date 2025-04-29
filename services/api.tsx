@@ -14,17 +14,16 @@ export async function post<T>(url: string, request?: T, options?: { skipAuth?: b
   return response.data;
 }
 
-// export async function put<TRequest = any, TResponse = any>(
-//   url: string,
-//   body: TRequest
-// ): Promise<TResponse> {
-//   const response = await api.put<TResponse>(url, body);
-//   return response.data;
-// }
+//falta pasar el id en la url
+export async function put<T>(url: string, request?: T, options?: { skipAuth?: boolean }): Promise<boolean> {
+  const axios = await getServerAxios(options);
+  const response = await axios.put<boolean>(url, request);
+  return response.data;
+}
 
-// export async function apiDelete<TResponse = any>(
-//   url: string
-// ): Promise<TResponse> {
-//   const response = await api.delete<TResponse>(url);
-//   return response.data;
-// }
+//falta pasar el id en la url
+export async function deleteLogic(url: string, options?: { skipAuth?: boolean }): Promise<boolean> {
+  const axios = await getServerAxios(options);
+  const response = await axios.delete<boolean>(url);
+  return response.data;
+}

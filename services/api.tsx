@@ -14,14 +14,12 @@ export async function post<T>(url: string, request?: T, options?: { skipAuth?: b
   return response.data;
 }
 
-//falta pasar el id en la url
 export async function put<T>(url: string, request?: T, options?: { skipAuth?: boolean }): Promise<boolean> {
   const axios = await getServerAxios(options);
   const response = await axios.put<boolean>(url, request);
   return response.data;
 }
 
-//falta pasar el id en la url
 export async function deleteLogic(url: string, options?: { skipAuth?: boolean }): Promise<boolean> {
   const axios = await getServerAxios(options);
   const response = await axios.delete<boolean>(url);

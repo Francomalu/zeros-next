@@ -3,7 +3,7 @@
 import type React from 'react';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bus, Edit, Plus, Search, Trash } from 'lucide-react';
+import { Bus, Edit, Plus, Search, Trash, TruckIcon, UserPlusIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,22 @@ import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { cn } from '@/lib/utils';
-import { get } from '@/services/api';
+import { deleteLogic, get, post, put } from '@/services/api';
+import { PageHeader } from '@/components/dashboard/page-header';
+import { FilterBar } from '@/components/dashboard/filter-bar';
+import { SearchFilter } from '@/components/dashboard/search-filter';
+import { StatusFilter } from '@/components/dashboard/status-filter';
+import { DashboardTable } from '@/components/dashboard/dashboard-table';
+import { TablePagination } from '@/components/dashboard/table-pagination';
+import { MobileCard } from '@/components/dashboard/mobile-card';
+import { StatusBadge } from '@/components/dashboard/status-badge';
+import { FormDialog } from '@/components/dashboard/form-dialog';
+import { FormField } from '@/components/dashboard/form-field';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DeleteDialog } from '@/components/dashboard/delete-dialog';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useFormReducer } from '@/hooks/use-form-reducer';
+import { toast } from '@/hooks/use-toast';
 
 // Define the PagedResponse interface
 export interface PagedResponse<T = any> {
@@ -25,39 +40,46 @@ export interface PagedResponse<T = any> {
 // Define the Vehicle interface
 interface Vehicle {
   VehicleId: number;
+  VehicleTypeId: number;
   VehicleTypeName: string;
   InternalNumber: string;
   VehicleTypeQuantity: number;
-  Status: boolean;
+  status: string;
 }
 
+const initialVehicleForm = {
+  vehicleTypeId: 0,
+  internalNumber: '',
+};
+
 export default function VehicleManagement() {
-  const [isAddVehicleDialogOpen, setIsAddVehicleDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Separate state for current page to avoid double fetching
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
+  const [pageSize, setPageSize] = useState(8);
+
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [currentVehicleId, setCurrentVehicleId] = useState<number | null>(null);
+  const addForm = useFormReducer(initialVehicleForm);
+
+  // Form state for editing a vehicle
+  const editForm = useFormReducer(initialVehicleForm);
 
   // State for the paged response
   const [vehiclesData, setVehiclesData] = useState<PagedResponse<Vehicle>>({
     Items: [],
     PageNumber: 1,
-    PageSize: 5,
+    PageSize: 8,
     TotalRecords: 0,
     TotalPages: 0,
   });
-
-  // Ref to track if search has changed
-  const searchChanged = useRef(false);
-
   // Function to fetch vehicles data
   const fetchVehicles = async (pageToFetch = currentPage, pageSizeToFetch = pageSize) => {
-    if (isLoading) return; // Prevent multiple simultaneous requests
-
     setIsLoading(true);
-
     try {
       const response = await get<any, Vehicle>('/vehicle-report', {
         pageNumber: pageToFetch,
@@ -70,214 +92,282 @@ export default function VehicleManagement() {
             }
           : {},
       });
+      console.log(response.Items);
       setVehiclesData(response);
       setIsLoading(false);
     } catch (error) {
-      console.error('Error fetching vehicles:', error);
       setIsLoading(false);
     }
   };
 
   // Fetch vehicles when search changes or on initial load
   useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      // When search changes, reset to page 1
-      if (searchChanged.current) {
-        fetchVehicles(1, pageSize);
-        searchChanged.current = false;
+    fetchVehicles(currentPage, pageSize);
+  }, [searchQuery, pageSize, currentPage]);
+
+  const submitAddVehicle = async () => {
+    addForm.setLoading(true);
+    try {
+      const response = await post('/vehicle-create', addForm.state.data);
+      if (response) {
+        toast({
+          title: 'Vehículo creado',
+          description: 'El vehículo ha sido creado exitosamente',
+          variant: 'success',
+        });
+        setIsAddModalOpen(false);
+        fetchVehicles(); // Refresh the vehicle list
       } else {
-        // Initial load
-        fetchVehicles();
+        addForm.setError('Error al crear el vehículo');
+        toast({
+          title: 'Error',
+          description: 'Error al crear el vehículo',
+          variant: 'destructive',
+        });
       }
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, pageSize]); // Remove currentPage from dependencies
-
-  // Pagination handlers
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    fetchVehicles(page, pageSize);
-  };
-
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      const newPage = currentPage - 1;
-      setCurrentPage(newPage);
-      fetchVehicles(newPage, pageSize);
+    } catch (error) {
+      addForm.setError('Ocurrió un error al crear el vehículo');
+      toast({
+        title: 'Error',
+        description: 'Ocurrió un error al crear el vehículo',
+        variant: 'destructive',
+      });
+    } finally {
+      addForm.setLoading(false);
     }
   };
 
-  const handleNext = () => {
-    if (currentPage < vehiclesData.TotalPages) {
-      const newPage = currentPage + 1;
-      setCurrentPage(newPage);
-      fetchVehicles(newPage, pageSize);
+  const submitEditVehicle = async () => {
+    editForm.setLoading(true);
+    try {
+      const response = await put(`/vehicle-update/${currentVehicleId}`, editForm.state.data);
+      if (response) {
+        toast({
+          title: 'Vehículo editado',
+          description: 'El vehículo ha sido editado exitosamente',
+          variant: 'success',
+        });
+        setIsEditModalOpen(false);
+        fetchVehicles(); // Refresh the vehicle list
+      } else {
+        addForm.setError('Error al editar el vehículo');
+        toast({
+          title: 'Error',
+          description: 'Error al editar el vehículo',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      addForm.setError('Ocurrió un error al editar el vehículo');
+      toast({
+        title: 'Error',
+        description: 'Ocurrió un error al editar el vehículo',
+        variant: 'destructive',
+      });
+    } finally {
+      addForm.setLoading(false);
     }
   };
 
-  // Search handler with debounce
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchQuery(e.target.value);
-    searchChanged.current = true;
-    // The actual search is triggered by the useEffect
-  };
-
-  // Mock handlers for vehicle actions
   const handleEditVehicle = (vehicle: Vehicle) => {
-    console.log('Edit vehicle:', vehicle);
+    setCurrentVehicleId(vehicle.VehicleId);
+    editForm.setForm({
+      vehicleTypeId: vehicle.VehicleTypeId,
+      internalNumber: vehicle.InternalNumber,
+    });
+    setIsEditModalOpen(true);
   };
 
-  const handleDeleteVehicle = (vehicle: Vehicle) => {
-    console.log('Delete vehicle:', vehicle);
+  const handleDeleteVehicle = (id: number) => {
+    setCurrentVehicleId(id);
+    setIsDeleteModalOpen(true);
   };
 
-  const handleVehicleStatusToggle = (id: number, status: boolean) => {
-    console.log('Toggle status for vehicle ID:', id, 'New status:', status);
+  const confirmDelete = async () => {
+    const id = await deleteLogic(`/vehicle-delete/${currentVehicleId}`);
+    // In a real app, you would delete the vehicle from the database
+    setIsDeleteModalOpen(false);
+    setCurrentVehicleId(null);
+    fetchVehicles();
   };
 
-  // Calculate display range for pagination info
-  const startItem = (vehiclesData.PageNumber - 1) * vehiclesData.PageSize + 1;
-  const endItem = Math.min(startItem + vehiclesData.Items.length - 1, vehiclesData.TotalRecords);
+  const resetFilters = () => {
+    setSearchQuery('');
+    setCurrentPage(1);
+  };
+
+  const columns = [
+    { header: 'Nombre', accessor: 'VehicleTypeName', width: '30%' },
+    { header: 'Numero Interno', accessor: 'InternalNumber', width: '15%' },
+    {
+      header: 'Capacidad',
+      accessor: 'capacity',
+      cell: (vehicle: Vehicle) => <>{vehicle.VehicleTypeQuantity} asientos</>,
+      hidden: true,
+      width: '15%',
+    },
+    {
+      header: 'Estado',
+      accessor: 'status',
+      className: 'text-center',
+      width: '20%',
+      cell: (vehicle: Vehicle) => <StatusBadge status={vehicle.status} />,
+    },
+    {
+      header: 'Acciones',
+      accessor: 'actions',
+      className: 'text-right',
+      width: '20%',
+      cell: (vehicle: Vehicle) => (
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="outline" className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => handleEditVehicle(vehicle)}>
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="outline" className="h-8 text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleDeleteVehicle(vehicle.VehicleId)}>
+            <Trash className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-blue-800 font-display">Vehículos</h1>
-          <p className="text-gray-600 mt-2">Gestión de vehículos de la flota.</p>
-        </div>
-        <Button onClick={() => setIsAddVehicleDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Añadir Coche
-        </Button>
+      <PageHeader
+        title="Vehiculos"
+        description="Gestiona y visualiza toda la información de los vehiculos"
+        action={
+          <Button onClick={() => setIsAddModalOpen(true)}>
+            <TruckIcon className="mr-2 h-4 w-4" />
+            Añadir Vehiculo
+          </Button>
+        }
+      />
+
+      <Card className="w-full">
+        <CardContent className="pt-6 w-full">
+          <div className="space-y-4 w-full">
+            <FilterBar onReset={resetFilters}>
+              <SearchFilter value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por nombre..." />
+            </FilterBar>
+
+            <div className="hidden md:block w-full">
+              <DashboardTable columns={columns} data={vehiclesData.Items} emptyMessage="No se encontraron vehiculos." isLoading={isLoading} skeletonRows={vehiclesData.PageSize} />
+            </div>
+
+            {vehiclesData.Items.length > 0 && (
+              <TablePagination
+                currentPage={currentPage}
+                totalPages={vehiclesData.TotalPages}
+                totalItems={vehiclesData.TotalRecords}
+                itemsPerPage={vehiclesData.PageSize}
+                onPageChange={setCurrentPage}
+                itemName="vehiculos"
+              />
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Mobile view - Card layout */}
+      <div className="md:hidden space-y-4 mt-4">
+        {isLoading ? (
+          // Mobile skeleton loading state
+          Array.from({ length: 3 }).map((_, index) => (
+            <Card key={`skeleton-card-${index}`} className="w-full">
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center mb-4">
+                  <Skeleton className="h-6 w-[150px]" />
+                  <Skeleton className="h-6 w-[80px] rounded-full" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {Array.from({ length: 4 }).map((_, fieldIndex) => (
+                    <div key={`skeleton-field-${fieldIndex}`}>
+                      <Skeleton className="h-4 w-[80px] mb-1" />
+                      <Skeleton className="h-5 w-[120px]" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : vehiclesData.Items.length > 0 ? (
+          vehiclesData.Items.map((vehicle) => (
+            <MobileCard
+              key={vehicle.VehicleId}
+              title={vehicle.VehicleTypeName}
+              subtitle={vehicle.VehicleId.toString()}
+              badge={<StatusBadge status={vehicle.status ? 'Activo' : 'Inactivo'} />}
+              fields={[
+                { label: 'Numero de interno', value: vehicle.InternalNumber },
+                { label: 'Capacidad', value: vehicle.VehicleTypeQuantity },
+              ]}
+              onEdit={() => handleEditVehicle(vehicle)}
+              onDelete={() => handleDeleteVehicle(vehicle.VehicleId)}
+            />
+          ))
+        ) : (
+          <div className="text-center p-4 border rounded-md">No se encontraron vehiculos.</div>
+        )}
       </div>
 
-      <Card className="shadow-sm border-gray-200">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bus className="h-5 w-5 text-blue-600" />
-              <span>Lista de Vehículos</span>
-            </div>
-            <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
-              <Input placeholder="Buscar coche..." className="pl-8" value={searchQuery} onChange={handleSearchChange} />
-            </div>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : vehiclesData.Items.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              <Bus className="h-12 w-12 mx-auto text-gray-300 mb-3" />
-              <p>No hay coches registrados.</p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead className="w-[40%]">Tipo</TableHead>
-                    <TableHead className="w-[15%]">Código</TableHead>
-                    <TableHead className="w-[15%]">Capacidad</TableHead>
-                    <TableHead className="w-[10%]">Estado</TableHead>
-                    <TableHead className="w-[20%] text-right">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {vehiclesData.Items.map((vehicle) => (
-                    <TableRow key={vehicle.VehicleId} className={cn('transition-colors hover:bg-gray-50', !vehicle.Status && 'bg-gray-50/50')}>
-                      <TableCell className="font-medium">{vehicle.VehicleTypeName}</TableCell>
-                      <TableCell>{vehicle.InternalNumber}</TableCell>
-                      <TableCell>{vehicle.VehicleTypeQuantity}</TableCell>
-                      <TableCell>
-                        <Switch checked={vehicle.Status} onCheckedChange={(checked) => handleVehicleStatusToggle(vehicle.VehicleId, checked)} />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button size="sm" variant="outline" className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50" onClick={() => handleEditVehicle(vehicle)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="outline" className="h-8 text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleDeleteVehicle(vehicle)}>
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-        {vehiclesData.Items.length > 0 && (
-          <CardFooter className="flex items-center justify-between border-t p-4">
-            <div className="text-sm text-gray-500">
-              Mostrando {startItem}-{endItem} de {vehiclesData.TotalRecords} vehículos
-            </div>
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious onClick={handlePrevious} className={cn(currentPage === 1 && 'pointer-events-none opacity-50')} />
-                </PaginationItem>
+      {/* Add Customer Modal */}
+      <FormDialog
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        title="Añadir Nuevo Vehiculo"
+        description="Crea un nuevo vehiculo completando el formulario a continuación."
+        onSubmit={() => submitAddVehicle()}
+        submitText="Crear Vehiculo"
+      >
+        <FormField label="Tipo">
+          <Select value={addForm.state.data.vehicleTypeId.toString()} onValueChange={(value) => addForm.setField('vehicleTypeId', Number(value))}>
+            <SelectTrigger id="type">
+              <SelectValue placeholder="Seleccionar tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Combi</SelectItem>
+              <SelectItem value="2">Minibús</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Interno">
+          <Input id="internalNumber" placeholder="Número de interno" value={addForm.state.data.internalNumber} onChange={(e) => addForm.setField('internalNumber', e.target.value)} />
+        </FormField>
+      </FormDialog>
 
-                {/* Generate page links */}
-                {Array.from({ length: Math.min(vehiclesData.TotalPages, 5) }).map((_, index) => {
-                  // Logic to show pages around current page
-                  let pageToShow = index + 1;
+      {/* Edit Customer Modal */}
+      <FormDialog
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        title="Editar Vehículo"
+        description="Realiza cambios en los detalles del vehículo a continuación."
+        onSubmit={() => submitEditVehicle()}
+        submitText="Guardar Cambios"
+      >
+        <FormField label="Tipo">
+          <Select value={editForm.state.data.vehicleTypeId.toString()} onValueChange={(value) => editForm.setField('vehicleTypeId', Number(value))}>
+            <SelectTrigger id="type">
+              <SelectValue placeholder="Seleccionar tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Combi</SelectItem>
+              <SelectItem value="2">Minibús</SelectItem>
+            </SelectContent>
+          </Select>
+        </FormField>
+        <FormField label="Numero de Interno">
+          <Input id="edit-internalNumber" value={editForm.state.data.internalNumber} onChange={(e) => editForm.setField('internalNumber', e.target.value)} />
+        </FormField>
+      </FormDialog>
 
-                  if (vehiclesData.TotalPages > 5 && currentPage > 3) {
-                    if (index === 0) {
-                      pageToShow = 1;
-                    } else if (index === 1 && currentPage > 4) {
-                      return (
-                        <PaginationItem key={index}>
-                          <PaginationEllipsis />
-                        </PaginationItem>
-                      );
-                    } else {
-                      pageToShow = Math.min(currentPage + index - 2, vehiclesData.TotalPages);
-                    }
-                  }
-
-                  if (pageToShow <= vehiclesData.TotalPages) {
-                    return (
-                      <PaginationItem key={index}>
-                        <PaginationLink onClick={() => handlePageChange(pageToShow)} isActive={currentPage === pageToShow}>
-                          {pageToShow}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  }
-                  return null;
-                })}
-
-                {/* Show ellipsis if there are more pages */}
-                {vehiclesData.TotalPages > 5 && currentPage < vehiclesData.TotalPages - 2 && (
-                  <PaginationItem>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                )}
-
-                {/* Show last page if not visible in the current range */}
-                {vehiclesData.TotalPages > 5 && currentPage < vehiclesData.TotalPages - 1 && (
-                  <PaginationItem>
-                    <PaginationLink onClick={() => handlePageChange(vehiclesData.TotalPages)}>{vehiclesData.TotalPages}</PaginationLink>
-                  </PaginationItem>
-                )}
-
-                <PaginationItem>
-                  <PaginationNext onClick={handleNext} className={cn(currentPage === vehiclesData.TotalPages && 'pointer-events-none opacity-50')} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </CardFooter>
-        )}
-      </Card>
+      {/* Delete Confirmation Modal */}
+      <DeleteDialog
+        open={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        onConfirm={confirmDelete}
+        description="Esta acción no se puede deshacer. Esto eliminará permanentemente al cliente y todos los datos asociados de nuestros servidores."
+      />
     </div>
   );
 }

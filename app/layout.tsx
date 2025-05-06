@@ -3,7 +3,8 @@ import './globals.css';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 import AuthProvider from '@/components/auth-provider';
-import { Poppins } from 'next/font/google';
+import { Geist } from 'next/font/google';
+import { Toaster } from '@/components/ui/toaster';
 
 export const metadata: Metadata = {
   title: 'Zeros Tour',
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   generator: 'Solomillo inc',
 };
 
-const poppins = Poppins({
+const geist = Geist({
   subsets: ['latin'],
   weight: ['200', '400', '600', '700'], // elegí los pesos que vayas a usar
 });
@@ -23,8 +24,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={poppins.className}>
+      <body className={geist.className}>
         <AuthProvider>{children}</AuthProvider>
+        <Toaster />
       </body>
     </html>
   );

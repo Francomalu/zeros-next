@@ -1,5 +1,3 @@
 'use client';
 
-export default function Drivers() {
-  return <h1>Drivers</h1>;
-}
+export default function Drivers() {}

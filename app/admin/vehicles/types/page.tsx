@@ -3,7 +3,7 @@
 import type React from 'react';
 
 import { useState, useEffect, useRef } from 'react';
-import { Building, Bus, Edit, Plus, Search, Trash, TruckIcon, User, UserPlusIcon } from 'lucide-react';
+import { Bus, Edit, Plus, Search, Trash, TruckIcon, UserPlusIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,16 +24,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useFormReducer } from '@/hooks/use-form-reducer';
 import { toast } from '@/hooks/use-toast';
 import { PagedResponse } from '@/services/types';
-import { City } from '@/interfaces/city';
-import { Driver } from '@/interfaces/driver';
+import { VehicleType } from '@/interfaces/vehicleType';
 
-const initialDriverForm = {
-  firstName: '',
-  lastName: '',
-  documentNumber: '',
+const initialVehicleTypeForm = {
+  name: '',
+  quantity: 0,
 };
 
-export default function DriversManagement() {
+export default function VehicleManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -44,14 +42,14 @@ export default function DriversManagement() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [currentDriverId, setCurrentDriverId] = useState<number | null>(null);
-  const addForm = useFormReducer(initialDriverForm);
+  const [currentVehicleTypeId, setCurrentVehicleTypeId] = useState<number | null>(null);
+  const addForm = useFormReducer(initialVehicleTypeForm);
 
   // Form state for editing a vehicle
-  const editForm = useFormReducer(initialDriverForm);
+  const editForm = useFormReducer(initialVehicleTypeForm);
 
   // State for the paged response
-  const [driversData, setDriversData] = useState<PagedResponse<Driver>>({
+  const [vehiclesTypesData, setVehiclesTypesData] = useState<PagedResponse<VehicleType>>({
     Items: [],
     PageNumber: 1,
     PageSize: 8,
@@ -59,10 +57,10 @@ export default function DriversManagement() {
     TotalPages: 0,
   });
   // Function to fetch vehicles data
-  const fetchDrivers = async (pageToFetch = currentPage, pageSizeToFetch = pageSize) => {
+  const fetchVehicles = async (pageToFetch = currentPage, pageSizeToFetch = pageSize) => {
     setIsLoading(true);
     try {
-      const response = await get<any, Driver>('/driver-report', {
+      const response = await get<any, VehicleType>('/vehicle-type-report', {
         pageNumber: pageToFetch,
         pageSize: pageSizeToFetch,
         sortBy: 'fecha',
@@ -73,8 +71,7 @@ export default function DriversManagement() {
             }
           : {},
       });
-      console.log(response);
-      setDriversData(response);
+      setVehiclesTypesData(response);
       setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
@@ -83,34 +80,34 @@ export default function DriversManagement() {
 
   // Fetch vehicles when search changes or on initial load
   useEffect(() => {
-    fetchDrivers(currentPage, pageSize);
+    fetchVehicles(currentPage, pageSize);
   }, [searchQuery, pageSize, currentPage]);
 
-  const submitAddDriver = async () => {
+  const submitAddVehicle = async () => {
     addForm.setLoading(true);
     try {
-      const response = await post('/driver-create', addForm.state.data);
+      const response = await post('/vehicle-type-create', addForm.state.data);
       if (response) {
         toast({
-          title: 'Chofer creada',
-          description: 'El chofer ha sido creado exitosamente',
+          title: 'Vehículo creado',
+          description: 'El vehículo ha sido creado exitosamente',
           variant: 'success',
         });
         setIsAddModalOpen(false);
-        fetchDrivers(); // Refresh the vehicle list
+        fetchVehicles(); // Refresh the vehicle list
       } else {
-        addForm.setError('Error al crear el chofer');
+        addForm.setError('Error al crear el vehículo');
         toast({
           title: 'Error',
-          description: 'Error al crear el chofer',
+          description: 'Error al crear el vehículo',
           variant: 'destructive',
         });
       }
     } catch (error) {
-      addForm.setError('Ocurrió un error al crear el chofer');
+      addForm.setError('Ocurrió un error al crear el vehículo');
       toast({
         title: 'Error',
-        description: 'Ocurrió un error al crear el chofer',
+        description: 'Ocurrió un error al crear el vehículo',
         variant: 'destructive',
       });
     } finally {
@@ -118,31 +115,31 @@ export default function DriversManagement() {
     }
   };
 
-  const submitEditDriver = async () => {
+  const submitEditVehicle = async () => {
     editForm.setLoading(true);
     try {
-      const response = await put(`/driver-update/${currentDriverId}`, editForm.state.data);
+      const response = await put(`/vehicle-type-update/${currentVehicleTypeId}`, editForm.state.data);
       if (response) {
         toast({
-          title: 'Chofer editada',
-          description: 'El chofer ha sido editado exitosamente',
+          title: 'Vehículo editado',
+          description: 'El vehículo ha sido editado exitosamente',
           variant: 'success',
         });
         setIsEditModalOpen(false);
-        fetchDrivers();
+        fetchVehicles(); // Refresh the vehicle list
       } else {
-        addForm.setError('Error al editar el chofer');
+        addForm.setError('Error al editar el vehículo');
         toast({
           title: 'Error',
-          description: 'Error al editar el chofer',
+          description: 'Error al editar el vehículo',
           variant: 'destructive',
         });
       }
     } catch (error) {
-      addForm.setError('Ocurrió un error al editar el chofer');
+      addForm.setError('Ocurrió un error al editar el vehículo');
       toast({
         title: 'Error',
-        description: 'Ocurrió un error al editar el chofer',
+        description: 'Ocurrió un error al editar el vehículo',
         variant: 'destructive',
       });
     } finally {
@@ -150,27 +147,26 @@ export default function DriversManagement() {
     }
   };
 
-  const handleEditDriver = (driver: Driver) => {
-    setCurrentDriverId(driver.DriverId);
+  const handleEditVehicle = (vehicle: VehicleType) => {
+    setCurrentVehicleTypeId(vehicle.VehicleTypeId);
     editForm.setForm({
-      firstName: driver.FirstName,
-      lastName: driver.LastName,
-      documentNumber: driver.DocumentNumber,
+      name: vehicle.Name,
+      quantity: vehicle.Quantity,
     });
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteDriver = (id: number) => {
-    setCurrentDriverId(id);
+  const handleDeleteVehicle = (id: number) => {
+    setCurrentVehicleTypeId(id);
     setIsDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
-    const id = await deleteLogic(`/vehicle-delete/${currentDriverId}`);
+    const id = await deleteLogic(`/vehicle-delete/${currentVehicleTypeId}`);
     // In a real app, you would delete the vehicle from the database
     setIsDeleteModalOpen(false);
-    setCurrentDriverId(null);
-    fetchDrivers();
+    setCurrentVehicleTypeId(null);
+    fetchVehicles();
   };
 
   const resetFilters = () => {
@@ -179,28 +175,27 @@ export default function DriversManagement() {
   };
 
   const columns = [
-    { header: 'Nombre', accessor: 'FirstName', width: '20%' },
-    { header: 'Apellido', accessor: 'LastName', width: '20%' },
-    { header: 'Numero de documento', accessor: 'DocumentNumber', width: '20%' },
+    { header: 'Nombre', accessor: 'Name', width: '40%' },
+    { header: 'Cantidad', accessor: 'Quantity', width: '15%' },
     {
       header: 'Estado',
       accessor: 'status',
       className: 'text-center',
       width: '20%',
-      cell: (driver: Driver) => <StatusBadge status={driver.Status} />,
+      cell: (vehicle: VehicleType) => <StatusBadge status={vehicle.status} />,
     },
     {
       header: 'Acciones',
       accessor: 'actions',
       className: 'text-right',
-      width: '20%',
-      cell: (driver: Driver) => (
+      width: '25%',
+      cell: (vehicle: VehicleType) => (
         <div className="flex justify-end gap-2">
           <Button
             size="sm"
             variant="outline"
             className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50"
-            onClick={() => handleEditDriver(driver)}
+            onClick={() => handleEditVehicle(vehicle)}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -208,7 +203,7 @@ export default function DriversManagement() {
             size="sm"
             variant="outline"
             className="h-8 text-red-600 border-red-200 hover:bg-red-50"
-            onClick={() => handleDeleteDriver(driver.DriverId)}
+            onClick={() => handleDeleteVehicle(vehicle.VehicleTypeId)}
           >
             <Trash className="h-4 w-4" />
           </Button>
@@ -220,12 +215,12 @@ export default function DriversManagement() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Choferes"
-        description="Gestiona y visualiza toda la información de las choferes."
+        title="Tipos de Vehiculos"
+        description="Gestiona y visualiza toda la información de los tipos de vehiculos"
         action={
           <Button onClick={() => setIsAddModalOpen(true)}>
-            <User className="mr-2 h-4 w-4" />
-            Añadir chofer
+            <TruckIcon className="mr-2 h-4 w-4" />
+            Añadir Tipo de Vehiculo
           </Button>
         }
       />
@@ -240,21 +235,21 @@ export default function DriversManagement() {
             <div className="hidden md:block w-full">
               <DashboardTable
                 columns={columns}
-                data={driversData.Items}
-                emptyMessage="No se encontraron choferes."
+                data={vehiclesTypesData.Items}
+                emptyMessage="No se encontraron vehiculos."
                 isLoading={isLoading}
-                skeletonRows={driversData.PageSize}
+                skeletonRows={vehiclesTypesData.PageSize}
               />
             </div>
 
-            {driversData.Items.length > 0 && (
+            {vehiclesTypesData.Items.length > 0 && (
               <TablePagination
                 currentPage={currentPage}
-                totalPages={driversData.TotalPages}
-                totalItems={driversData.TotalRecords}
-                itemsPerPage={driversData.PageSize}
+                totalPages={vehiclesTypesData.TotalPages}
+                totalItems={vehiclesTypesData.TotalRecords}
+                itemsPerPage={vehiclesTypesData.PageSize}
                 onPageChange={setCurrentPage}
-                itemName="choferes"
+                itemName="vehiculos"
               />
             )}
           </div>
@@ -283,24 +278,20 @@ export default function DriversManagement() {
               </CardContent>
             </Card>
           ))
-        ) : driversData.Items.length > 0 ? (
-          driversData.Items.map((driver) => (
+        ) : vehiclesTypesData.Items.length > 0 ? (
+          vehiclesTypesData.Items.map((vehicle) => (
             <MobileCard
-              key={driver.DriverId}
-              title={driver.FirstName}
-              subtitle={driver.LastName}
-              badge={<StatusBadge status={driver.Status ? 'Activo' : 'Inactivo'} />}
-              fields={[
-                { label: 'Nombre', value: driver.FirstName },
-                { label: 'Apellido', value: driver.LastName },
-                { label: 'Numero de documento', value: driver.DocumentNumber },
-              ]}
-              onEdit={() => handleEditDriver(driver)}
-              onDelete={() => handleDeleteDriver(driver.DriverId)}
+              key={vehicle.VehicleTypeId}
+              title={vehicle.Name}
+              subtitle={vehicle.VehicleTypeId.toString()}
+              badge={<StatusBadge status={vehicle.status ? 'Activo' : 'Inactivo'} />}
+              fields={[{ label: 'Cantidad', value: vehicle.Quantity }]}
+              onEdit={() => handleEditVehicle(vehicle)}
+              onDelete={() => handleDeleteVehicle(vehicle.VehicleTypeId)}
             />
           ))
         ) : (
-          <div className="text-center p-4 border rounded-md">No se encontraron choferes.</div>
+          <div className="text-center p-4 border rounded-md">No se encontraron tipos de vehiculos.</div>
         )}
       </div>
 
@@ -308,33 +299,25 @@ export default function DriversManagement() {
       <FormDialog
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
-        title="Añadir chofer"
-        description="Crea un nuevo chofer completando el formulario a continuación."
-        onSubmit={() => submitAddDriver()}
-        submitText="Crear Chofer"
+        title="Añadir nuevo tipo de vehiculo"
+        description="Crea un nuevo tipo de vehiculo completando el formulario a continuación."
+        onSubmit={() => submitAddVehicle()}
+        submitText="Crear Vehiculo"
       >
         <FormField label="Nombre">
           <Input
-            id="firstName"
+            id="name"
             placeholder="Nombre"
-            value={addForm.state.data.firstName}
-            onChange={(e) => addForm.setField('firstName', e.target.value)}
+            value={addForm.state.data.name}
+            onChange={(e) => addForm.setField('name', e.target.value)}
           />
         </FormField>
-        <FormField label="Apellido">
+        <FormField label="Capacidad">
           <Input
-            id="lastName"
-            placeholder="Apellido"
-            value={addForm.state.data.lastName}
-            onChange={(e) => addForm.setField('lastName', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Numero de documento">
-          <Input
-            id="documentNumber"
-            placeholder="Numero de documento"
-            value={addForm.state.data.documentNumber}
-            onChange={(e) => addForm.setField('documentNumber', e.target.value)}
+            id="quantity"
+            placeholder="Capacidad"
+            value={addForm.state.data.quantity}
+            onChange={(e) => addForm.setField('quantity', Number(e.target.value))}
           />
         </FormField>
       </FormDialog>
@@ -343,30 +326,23 @@ export default function DriversManagement() {
       <FormDialog
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
-        title="Editar chofer"
-        description="Realiza cambios en los detalles del chofer a continuación."
-        onSubmit={() => submitEditDriver()}
+        title="Editar tipo de vehículo"
+        description="Realiza cambios en los detalles del tipo de vehículo a continuación."
+        onSubmit={() => submitEditVehicle()}
         submitText="Guardar Cambios"
       >
         <FormField label="Nombre">
           <Input
             id="edit-name"
-            value={editForm.state.data.firstName}
-            onChange={(e) => editForm.setField('firstName', e.target.value)}
+            value={editForm.state.data.name}
+            onChange={(e) => editForm.setField('name', e.target.value)}
           />
         </FormField>
-        <FormField label="Apellido">
+        <FormField label="Capacidad">
           <Input
-            id="edit-lastName"
-            value={editForm.state.data.lastName}
-            onChange={(e) => editForm.setField('lastName', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Numero de documento">
-          <Input
-            id="edit-documentNumber"
-            value={editForm.state.data.documentNumber}
-            onChange={(e) => editForm.setField('documentNumber', e.target.value)}
+            id="edit-capacidad"
+            value={editForm.state.data.quantity}
+            onChange={(e) => editForm.setField('quantity', Number(e.target.value))}
           />
         </FormField>
       </FormDialog>

@@ -3,7 +3,25 @@
 import type React from 'react';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { Bus, Calendar, ChevronDown, ChevronLeft, ChevronRight, CreditCard, LogOut, LogOutIcon, MapPin, Menu, Settings, User, UserCheck, UserIcon, Users, Wrench } from 'lucide-react';
+import {
+  Building,
+  Bus,
+  Calendar,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CreditCard,
+  LogOut,
+  LogOutIcon,
+  MapPin,
+  Menu,
+  Settings,
+  User,
+  UserCheck,
+  UserIcon,
+  Users,
+  Wrench,
+} from 'lucide-react';
 import {
   Sidebar as SidebarComponent,
   SidebarContent,
@@ -33,7 +51,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
   const { data: session } = useSession();
-  const userRole = (session?.user as any)?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']?.toLowerCase();
+  const userRole = (session?.user as any)?.[
+    'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+  ]?.toLowerCase();
 
   const toggleMenu = (menuKey: string) => {
     setExpandedMenus((prev) => ({
@@ -62,7 +82,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     {
       name: 'Servicios',
       icon: Wrench,
-      path: '/servicios',
+      path: '/admin/services',
       roles: ['admin'],
     },
     {
@@ -78,6 +98,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       roles: ['admin'],
     },
     {
+      name: 'Ciudades',
+      icon: Building,
+      path: '/admin/cities',
+      roles: ['admin'],
+    },
+    {
       name: 'Direcciones',
       icon: MapPin,
       path: '/admin/directions',
@@ -89,7 +115,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           path: 'admin/direcciones/subidas-bajadas',
           roles: ['admin'],
         },
-        { name: 'Ciudades', path: 'admin/direcciones/ciudades', roles: ['admin'] },
+        {
+          name: 'Ciudades',
+          path: 'admin/direcciones/ciudades',
+          roles: ['admin'],
+        },
       ],
     },
     {
@@ -102,7 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { name: 'Coches', path: '/admin/vehicles', roles: ['admin'] },
         {
           name: 'Tipos de vehículo',
-          path: '/admin/vehiculos/tipos',
+          path: '/admin/vehicles/types',
           roles: ['admin'],
         },
       ],
@@ -165,10 +195,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         return (
                           <SidebarMenuItem key={item.path}>
                             <div className="w-full">
-                              <SidebarMenuButton tooltip={item.name} isActive={isActive} onClick={() => toggleMenu(item.key!)}>
+                              <SidebarMenuButton
+                                tooltip={item.name}
+                                isActive={isActive}
+                                onClick={() => toggleMenu(item.key!)}
+                              >
                                 <item.icon />
                                 <span>{item.name}</span>
-                                <ChevronDown className={cn('ml-auto h-4 w-4 shrink-0 transition-transform duration-200', isExpanded && 'rotate-180')} />
+                                <ChevronDown
+                                  className={cn(
+                                    'ml-auto h-4 w-4 shrink-0 transition-transform duration-200',
+                                    isExpanded && 'rotate-180'
+                                  )}
+                                />
                               </SidebarMenuButton>
 
                               {isExpanded && (

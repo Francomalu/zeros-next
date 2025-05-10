@@ -15,14 +15,14 @@ interface RouteConfig {
 const routeConfigs: Record<string, RouteConfig> = {
   // Rutas de administrador
   "/admin": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/reservations": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/customers": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/customers/debts": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/vehicles": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/pricing": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/drivers": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/routes": { roles: ["Admin"], redirectTo: "/unauthorized" },
-  "/admin/settings": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/reservations": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/customers": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/customers/debts": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/vehicles": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/pricing": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/drivers": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/routes": { roles: ["Admin"], redirectTo: "/unauthorized" },
+  // "/admin/settings": { roles: ["Admin"], redirectTo: "/unauthorized" },
 
   // Rutas de usuario (empleados)
   "/user": { roles: ["User"], redirectTo: "/unauthorized" },

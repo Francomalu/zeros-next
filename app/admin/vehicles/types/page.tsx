@@ -25,10 +25,24 @@ import { useFormReducer } from '@/hooks/use-form-reducer';
 import { toast } from '@/hooks/use-toast';
 import { PagedResponse } from '@/services/types';
 import { VehicleType } from '@/interfaces/vehicleType';
+import { maxLengthRule, maxValueRule, minLengthRule, minValueRule } from '@/utils/validation-rules';
+import { rule } from 'postcss';
+import { useFormValidation } from '@/hooks/use-form-validation';
 
 const initialVehicleTypeForm = {
   name: '',
   quantity: 0,
+};
+
+const validationConfig = {
+  name: {
+    required: true,
+    rules: [minLengthRule(3), maxLengthRule(50)],
+  },
+  quantity: {
+    required: true,
+    rules: [minValueRule(1), maxValueRule(100)],
+  },
 };
 
 export default function VehicleManagement() {
@@ -43,10 +57,10 @@ export default function VehicleManagement() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentVehicleTypeId, setCurrentVehicleTypeId] = useState<number | null>(null);
-  const addForm = useFormReducer(initialVehicleTypeForm);
+  const addForm = useFormValidation(initialVehicleTypeForm, validationConfig);
 
   // Form state for editing a vehicle
-  const editForm = useFormReducer(initialVehicleTypeForm);
+  const editForm = useFormValidation(initialVehicleTypeForm, validationConfig);
 
   // State for the paged response
   const [vehiclesTypesData, setVehiclesTypesData] = useState<PagedResponse<VehicleType>>({
@@ -57,7 +71,7 @@ export default function VehicleManagement() {
     TotalPages: 0,
   });
   // Function to fetch vehicles data
-  const fetchVehicles = async (pageToFetch = currentPage, pageSizeToFetch = pageSize) => {
+  const fetchTypeVehicles = async (pageToFetch = currentPage, pageSizeToFetch = pageSize) => {
     setIsLoading(true);
     try {
       const response = await get<any, VehicleType>('/vehicle-type-report', {
@@ -80,83 +94,81 @@ export default function VehicleManagement() {
 
   // Fetch vehicles when search changes or on initial load
   useEffect(() => {
-    fetchVehicles(currentPage, pageSize);
+    fetchTypeVehicles(currentPage, pageSize);
   }, [searchQuery, pageSize, currentPage]);
 
-  const submitAddVehicle = async () => {
-    addForm.setLoading(true);
-    try {
-      const response = await post('/vehicle-type-create', addForm.state.data);
-      if (response) {
-        toast({
-          title: 'Vehículo creado',
-          description: 'El vehículo ha sido creado exitosamente',
-          variant: 'success',
-        });
-        setIsAddModalOpen(false);
-        fetchVehicles(); // Refresh the vehicle list
-      } else {
-        addForm.setError('Error al crear el vehículo');
+  const submitAddTypeVehicle = async () => {
+    addForm.handleSubmit(async (data) => {
+      try {
+        const response = await post('/vehicle-type-create', data);
+        if (response) {
+          toast({
+            title: 'Vehículo creado',
+            description: 'El vehículo ha sido creado exitosamente',
+            variant: 'success',
+          });
+          setIsAddModalOpen(false);
+          fetchTypeVehicles(); // Refresh the vehicle list
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Error al crear el vehículo',
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
         toast({
           title: 'Error',
-          description: 'Error al crear el vehículo',
+          description: 'Ocurrió un error al crear el vehículo',
           variant: 'destructive',
         });
       }
-    } catch (error) {
-      addForm.setError('Ocurrió un error al crear el vehículo');
-      toast({
-        title: 'Error',
-        description: 'Ocurrió un error al crear el vehículo',
-        variant: 'destructive',
-      });
-    } finally {
-      addForm.setLoading(false);
-    }
-  };
-
-  const submitEditVehicle = async () => {
-    editForm.setLoading(true);
-    try {
-      const response = await put(`/vehicle-type-update/${currentVehicleTypeId}`, editForm.state.data);
-      if (response) {
-        toast({
-          title: 'Vehículo editado',
-          description: 'El vehículo ha sido editado exitosamente',
-          variant: 'success',
-        });
-        setIsEditModalOpen(false);
-        fetchVehicles(); // Refresh the vehicle list
-      } else {
-        addForm.setError('Error al editar el vehículo');
-        toast({
-          title: 'Error',
-          description: 'Error al editar el vehículo',
-          variant: 'destructive',
-        });
-      }
-    } catch (error) {
-      addForm.setError('Ocurrió un error al editar el vehículo');
-      toast({
-        title: 'Error',
-        description: 'Ocurrió un error al editar el vehículo',
-        variant: 'destructive',
-      });
-    } finally {
-      addForm.setLoading(false);
-    }
-  };
-
-  const handleEditVehicle = (vehicle: VehicleType) => {
-    setCurrentVehicleTypeId(vehicle.VehicleTypeId);
-    editForm.setForm({
-      name: vehicle.Name,
-      quantity: vehicle.Quantity,
     });
+  };
+
+  const submitEditTypeVehicle = async () => {
+    editForm.handleSubmit(async (data) => {
+      try {
+        const response = await put(`/vehicle-type-update/${currentVehicleTypeId}`, data);
+        if (response) {
+          toast({
+            title: 'Vehículo actualizado',
+            description: 'El vehículo ha sido actualizado exitosamente',
+            variant: 'success',
+          });
+          setIsEditModalOpen(false);
+          fetchTypeVehicles(); // Refresh the vehicle list
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Error al actualizar el vehículo',
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Ocurrió un error al actualizar el vehículo',
+          variant: 'destructive',
+        });
+      }
+    });
+  };
+
+  const handleAddTypeVehicle = () => {
+    setCurrentVehicleTypeId(null);
+    setIsAddModalOpen(true);
+    addForm.resetForm();
+  };
+
+  const handleEditTypeVehicle = (vehicle: VehicleType) => {
+    setCurrentVehicleTypeId(vehicle.VehicleTypeId);
+    editForm.setField('name', vehicle.Name);
+    editForm.setField('quantity', vehicle.Quantity);
     setIsEditModalOpen(true);
   };
 
-  const handleDeleteVehicle = (id: number) => {
+  const handleDeleteTypeVehicle = (id: number) => {
     setCurrentVehicleTypeId(id);
     setIsDeleteModalOpen(true);
   };
@@ -166,7 +178,7 @@ export default function VehicleManagement() {
     // In a real app, you would delete the vehicle from the database
     setIsDeleteModalOpen(false);
     setCurrentVehicleTypeId(null);
-    fetchVehicles();
+    fetchTypeVehicles();
   };
 
   const resetFilters = () => {
@@ -195,7 +207,7 @@ export default function VehicleManagement() {
             size="sm"
             variant="outline"
             className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50"
-            onClick={() => handleEditVehicle(vehicle)}
+            onClick={() => handleEditTypeVehicle(vehicle)}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -203,7 +215,7 @@ export default function VehicleManagement() {
             size="sm"
             variant="outline"
             className="h-8 text-red-600 border-red-200 hover:bg-red-50"
-            onClick={() => handleDeleteVehicle(vehicle.VehicleTypeId)}
+            onClick={() => handleDeleteTypeVehicle(vehicle.VehicleTypeId)}
           >
             <Trash className="h-4 w-4" />
           </Button>
@@ -218,7 +230,7 @@ export default function VehicleManagement() {
         title="Tipos de Vehiculos"
         description="Gestiona y visualiza toda la información de los tipos de vehiculos"
         action={
-          <Button onClick={() => setIsAddModalOpen(true)}>
+          <Button onClick={() => handleAddTypeVehicle()}>
             <TruckIcon className="mr-2 h-4 w-4" />
             Añadir Tipo de Vehiculo
           </Button>
@@ -286,8 +298,8 @@ export default function VehicleManagement() {
               subtitle={vehicle.VehicleTypeId.toString()}
               badge={<StatusBadge status={vehicle.status ? 'Activo' : 'Inactivo'} />}
               fields={[{ label: 'Cantidad', value: vehicle.Quantity }]}
-              onEdit={() => handleEditVehicle(vehicle)}
-              onDelete={() => handleDeleteVehicle(vehicle.VehicleTypeId)}
+              onEdit={() => handleEditTypeVehicle(vehicle)}
+              onDelete={() => handleDeleteTypeVehicle(vehicle.VehicleTypeId)}
             />
           ))
         ) : (
@@ -301,22 +313,22 @@ export default function VehicleManagement() {
         onOpenChange={setIsAddModalOpen}
         title="Añadir nuevo tipo de vehiculo"
         description="Crea un nuevo tipo de vehiculo completando el formulario a continuación."
-        onSubmit={() => submitAddVehicle()}
+        onSubmit={() => submitAddTypeVehicle()}
         submitText="Crear Vehiculo"
       >
-        <FormField label="Nombre">
+        <FormField label="Nombre" required error={editForm.errors.name}>
           <Input
             id="name"
             placeholder="Nombre"
-            value={addForm.state.data.name}
+            value={addForm.data.name}
             onChange={(e) => addForm.setField('name', e.target.value)}
           />
         </FormField>
-        <FormField label="Capacidad">
+        <FormField label="Capacidad" required error={editForm.errors.quantity}>
           <Input
             id="quantity"
             placeholder="Capacidad"
-            value={addForm.state.data.quantity}
+            value={addForm.data.quantity}
             onChange={(e) => addForm.setField('quantity', Number(e.target.value))}
           />
         </FormField>
@@ -328,20 +340,20 @@ export default function VehicleManagement() {
         onOpenChange={setIsEditModalOpen}
         title="Editar tipo de vehículo"
         description="Realiza cambios en los detalles del tipo de vehículo a continuación."
-        onSubmit={() => submitEditVehicle()}
+        onSubmit={() => submitEditTypeVehicle()}
         submitText="Guardar Cambios"
       >
-        <FormField label="Nombre">
+        <FormField label="Nombre" required error={editForm.errors.name}>
           <Input
             id="edit-name"
-            value={editForm.state.data.name}
+            value={editForm.data.name}
             onChange={(e) => editForm.setField('name', e.target.value)}
           />
         </FormField>
-        <FormField label="Capacidad">
+        <FormField label="Capacidad" required error={editForm.errors.quantity}>
           <Input
             id="edit-capacidad"
-            value={editForm.state.data.quantity}
+            value={editForm.data.quantity}
             onChange={(e) => editForm.setField('quantity', Number(e.target.value))}
           />
         </FormField>

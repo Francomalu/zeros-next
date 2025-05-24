@@ -3,7 +3,7 @@
 import type React from 'react';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bus, Edit, Plus, Search, Trash, TruckIcon, UserPlusIcon } from 'lucide-react';
+import { Bus, CreditCard, Edit, Plus, Search, Trash, TruckIcon, UserPlusIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,32 +25,18 @@ import { useFormReducer } from '@/hooks/use-form-reducer';
 import { toast } from '@/hooks/use-toast';
 import { PagedResponse } from '@/services/types';
 import { ApiSelect, type SelectOption } from '@/components/dashboard/select';
-import { VehicleType } from '@/interfaces/vehicleType';
-import { Vehicle } from '@/interfaces/vehicle';
+import { ReservePrice } from '@/interfaces/reservePrice';
+import { Service } from '@/interfaces/service';
 import { useFormValidation } from '@/hooks/use-form-validation';
+import { maxValueRule } from '@/utils/validation-rules';
 
-const initialVehicleForm = {
-  vehicleTypeId: 0,
-  internalNumber: '',
-  availableQuantity: 0,
+const initialReservePriceForm = {
+  serviceId: '',
+  price: '',
+  reserveTypeId: '',
 };
 
-const validationConfig = {
-  vehicleTypeId: {
-    required: true,
-    message: 'El tipo de vehículo es requerido',
-  },
-  internalNumber: {
-    required: true,
-    message: 'El número interno es requerido',
-  },
-  availableQuantity: {
-    required: true,
-    message: 'La cantidad disponible es requerida',
-  },
-};
-
-export default function VehicleManagement() {
+export default function PriceManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -61,18 +47,29 @@ export default function VehicleManagement() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [currentVehicleId, setCurrentVehicleId] = useState<number | null>(null);
+  const [currentPriceId, setCurrentPriceId] = useState<number | null>(null);
 
-  const addForm = useFormValidation(initialVehicleForm, validationConfig);
-
+  const validationConfig = {
+    serviceId: {
+      required: { message: 'El servicio es requerido' },
+    },
+    price: {
+      required: { message: 'El precio es requerido' },
+      rules: [maxValueRule(1000)],
+    },
+    reserveTypeId: {
+      required: { message: 'El tipo de reserva es requerido' },
+    },
+  };
+  const addForm = useFormValidation(initialReservePriceForm, validationConfig);
   // Form state for editing a vehicle
-  const editForm = useFormValidation(initialVehicleForm, validationConfig);
-  const [vehicleTypes, setVehicleTypes] = useState<SelectOption[]>([]);
+  const editForm = useFormValidation(initialReservePriceForm, validationConfig);
+  const [services, setServices] = useState<SelectOption[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
   const [optionsError, setOptionsError] = useState<string | null>(null);
 
   // State for the paged response
-  const [vehiclesData, setVehiclesData] = useState<PagedResponse<Vehicle>>({
+  const [pricesData, setPricesData] = useState<PagedResponse<ReservePrice>>({
     Items: [],
     PageNumber: 1,
     PageSize: 8,
@@ -80,17 +77,17 @@ export default function VehicleManagement() {
     TotalPages: 0,
   });
   // Function to fetch vehicles data
-  const fetchVehicles = async (pageToFetch = currentPage, pageSizeToFetch = pageSize) => {
+  const fetchPrices = async (pageToFetch = currentPage, pageSizeToFetch = pageSize) => {
     setIsLoading(true);
     try {
-      const response = await get<any, Vehicle>('/vehicle-report', {
+      const response = await get<any, ReservePrice>('/reserve-price-report', {
         pageNumber: pageToFetch,
         pageSize: pageSizeToFetch,
         sortBy: 'fecha',
         sortDescending: true,
         filters: searchQuery ? { search: searchQuery } : {},
       });
-      setVehiclesData(response);
+      setPricesData(response);
       setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
@@ -99,14 +96,14 @@ export default function VehicleManagement() {
 
   // Fetch vehicles when search changes or on initial load
   useEffect(() => {
-    fetchVehicles(currentPage, pageSize);
+    fetchPrices(currentPage, pageSize);
   }, [searchQuery, pageSize, currentPage]);
 
   const loadAllOptions = async () => {
     try {
       setIsOptionsLoading(true);
       setOptionsError(null);
-      const response = await get<any, VehicleType>('/vehicle-type-report', {
+      const response = await get<any, Service>('/service-report', {
         pageNumber: 1,
         pageSize: 10,
         sortBy: 'fecha',
@@ -114,111 +111,105 @@ export default function VehicleManagement() {
         filters: searchQuery ? { search: searchQuery } : {},
       });
       if (response) {
-        const formattedTypes = response.Items.map((type: VehicleType) => ({
-          id: type.VehicleTypeId.toString(),
-          value: type.VehicleTypeId.toString(),
-          label: type.Name,
-          defaultQuantity: type.Quantity.toString(),
+        const formattedTypes = response.Items.map((service: Service) => ({
+          id: service.ServiceId.toString(),
+          value: service.ServiceId.toString(),
+          label: service.Name,
         }));
-        setVehicleTypes(formattedTypes);
+        setServices(formattedTypes);
       }
     } catch (error) {
-      setOptionsError('Error al cargar los tipos de vehículos');
+      setOptionsError('Error al cargar los servicios');
     } finally {
       setIsOptionsLoading(false);
     }
   };
 
-  const submitAddVehicle = async () => {
+  const submitAddPrice = async () => {
     addForm.handleSubmit(async (data) => {
       try {
-        const response = await post('/vehicle-create', data);
+        const response = await post(`service/${data.serviceId}/price-add`, data);
         if (response) {
           toast({
-            title: 'Vehículo creado',
-            description: 'El vehículo ha sido creado exitosamente',
+            title: 'Precio creado',
+            description: 'El precio ha sido creado exitosamente',
             variant: 'success',
           });
           setIsAddModalOpen(false);
-          fetchVehicles(); // Refresh the vehicle list
+          fetchPrices(); // Refresh the vehicle list
         } else {
           toast({
             title: 'Error',
-            description: 'Error al crear el vehículo',
+            description: 'Error al crear el precio',
             variant: 'destructive',
           });
         }
       } catch (error) {
         toast({
           title: 'Error',
-          description: 'Ocurrió un error al crear el vehículo',
+          description: 'Ocurrió un error al crear el precio',
           variant: 'destructive',
         });
       }
     });
   };
 
-  const submitEditVehicle = async () => {
+  const submitEditPrice = async () => {
     editForm.handleSubmit(async (data) => {
       try {
-        const response = await put(`/vehicle-update/${currentVehicleId}`, data);
+        const response = await put(`service/${data.serviceId}/price-update`, data);
         if (response) {
           toast({
-            title: 'Vehículo actualizado',
-            description: 'El vehículo ha sido actualizado exitosamente',
+            title: 'Precio editado',
+            description: 'El precio ha sido editado exitosamente',
             variant: 'success',
           });
           setIsEditModalOpen(false);
-          fetchVehicles(); // Refresh the vehicle list
+          fetchPrices(); // Refresh the vehicle list
         } else {
           toast({
             title: 'Error',
-            description: 'Error al actualizar el vehículo',
+            description: 'Error al editar el precio',
             variant: 'destructive',
           });
         }
       } catch (error) {
         toast({
           title: 'Error',
-          description: 'Ocurrió un error al actualizar el vehículo',
+          description: 'Ocurrió un error al editar el precio',
           variant: 'destructive',
         });
       }
     });
   };
 
-  const handleAddVehicle = () => {
-    setCurrentVehicleId(null);
+  const handleAddPrice = () => {
+    setCurrentPriceId(null);
     addForm.resetForm();
     setIsAddModalOpen(true);
     loadAllOptions();
   };
 
-  const handleSetVehicleType = (value: string, quantity?: string) => {
-    addForm.setField('vehicleTypeId', Number(value));
-    addForm.setField('availableQuantity', Number(quantity));
-  };
-
-  const handleEditVehicle = (vehicle: Vehicle) => {
-    setCurrentVehicleId(vehicle.VehicleId);
-    editForm.setField('vehicleTypeId', vehicle.VehicleTypeId);
-    editForm.setField('availableQuantity', vehicle.AvailableQuantity);
-    editForm.setField('internalNumber', vehicle.InternalNumber);
+  const handleEditPrice = (price: ReservePrice) => {
+    setCurrentPriceId(price.ReservePriceId);
+    editForm.setField('serviceId', price.ServiceId);
+    editForm.setField('price', price.Price);
+    editForm.setField('reserveTypeId', price.ReserveTypeId);
     setIsEditModalOpen(true);
     loadAllOptions();
   };
 
-  const handleDeleteVehicle = (id: number) => {
-    setCurrentVehicleId(id);
+  const handleDeletePrice = (id: number) => {
+    setCurrentPriceId(id);
     setIsDeleteModalOpen(true);
   };
 
   const confirmDelete = async () => {
-    const id = await deleteLogic(`/vehicle-delete/${currentVehicleId}`);
+    const id = await deleteLogic(`/reserve-price-delete/${currentPriceId}`);
     // In a real app, you would delete the vehicle from the database
     setIsDeleteModalOpen(false);
-    setCurrentVehicleId(null);
-    fetchVehicles();
+    setCurrentPriceId(null);
+    fetchPrices();
   };
 
   const resetFilters = () => {
@@ -227,12 +218,12 @@ export default function VehicleManagement() {
   };
 
   const columns = [
-    { header: 'Nombre', accessor: 'VehicleTypeName', width: '30%' },
-    { header: 'Numero Interno', accessor: 'InternalNumber', width: '15%' },
+    { header: 'Sevicio', accessor: 'ServiceName', width: '30%' },
+    { header: 'ReserveType', accessor: 'ReserveType', width: '15%' },
     {
-      header: 'Capacidad',
-      accessor: 'capacity',
-      cell: (vehicle: Vehicle) => <>{vehicle.AvailableQuantity} asientos</>,
+      header: 'Precio',
+      accessor: 'price',
+      cell: (price: ReservePrice) => <>${price.Price} </>,
       hidden: true,
       width: '15%',
     },
@@ -241,20 +232,20 @@ export default function VehicleManagement() {
       accessor: 'status',
       className: 'text-center',
       width: '20%',
-      cell: (vehicle: Vehicle) => <StatusBadge status={vehicle.Status} />,
+      cell: (price: ReservePrice) => <StatusBadge status={price.Status} />,
     },
     {
       header: 'Acciones',
       accessor: 'actions',
       className: 'text-right',
       width: '20%',
-      cell: (vehicle: Vehicle) => (
+      cell: (price: ReservePrice) => (
         <div className="flex justify-end gap-2">
           <Button
             size="sm"
             variant="outline"
             className="h-8 text-blue-600 border-blue-200 hover:bg-blue-50"
-            onClick={() => handleEditVehicle(vehicle)}
+            onClick={() => handleEditPrice(price)}
           >
             <Edit className="h-4 w-4" />
           </Button>
@@ -262,7 +253,7 @@ export default function VehicleManagement() {
             size="sm"
             variant="outline"
             className="h-8 text-red-600 border-red-200 hover:bg-red-50"
-            onClick={() => handleDeleteVehicle(vehicle.VehicleId)}
+            onClick={() => handleDeletePrice(price.ReservePriceId)}
           >
             <Trash className="h-4 w-4" />
           </Button>
@@ -274,12 +265,12 @@ export default function VehicleManagement() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Vehiculos"
-        description="Gestiona y visualiza toda la información de los vehiculos"
+        title="Precios"
+        description="Gestiona y visualiza toda la información de los precios de los servicios."
         action={
-          <Button onClick={() => handleAddVehicle()}>
-            <TruckIcon className="mr-2 h-4 w-4" />
-            Añadir Vehiculo
+          <Button onClick={() => handleAddPrice()}>
+            <CreditCard className="mr-2 h-4 w-4" />
+            Añadir Precio
           </Button>
         }
       />
@@ -294,21 +285,21 @@ export default function VehicleManagement() {
             <div className="hidden md:block w-full">
               <DashboardTable
                 columns={columns}
-                data={vehiclesData.Items}
-                emptyMessage="No se encontraron vehiculos."
+                data={pricesData.Items}
+                emptyMessage="No se encontraron precios."
                 isLoading={isLoading}
-                skeletonRows={vehiclesData.PageSize}
+                skeletonRows={pricesData.PageSize}
               />
             </div>
 
-            {vehiclesData.Items.length > 0 && (
+            {pricesData.Items.length > 0 && (
               <TablePagination
                 currentPage={currentPage}
-                totalPages={vehiclesData.TotalPages}
-                totalItems={vehiclesData.TotalRecords}
-                itemsPerPage={vehiclesData.PageSize}
+                totalPages={pricesData.TotalPages}
+                totalItems={pricesData.TotalRecords}
+                itemsPerPage={pricesData.PageSize}
                 onPageChange={setCurrentPage}
-                itemName="vehiculos"
+                itemName="precios"
               />
             )}
           </div>
@@ -337,23 +328,20 @@ export default function VehicleManagement() {
               </CardContent>
             </Card>
           ))
-        ) : vehiclesData.Items.length > 0 ? (
-          vehiclesData.Items.map((vehicle) => (
+        ) : pricesData.Items.length > 0 ? (
+          pricesData.Items.map((price) => (
             <MobileCard
-              key={vehicle.VehicleId}
-              title={vehicle.VehicleTypeName}
-              subtitle={vehicle.VehicleId.toString()}
-              badge={<StatusBadge status={vehicle.Status ? 'Activo' : 'Inactivo'} />}
-              fields={[
-                { label: 'Numero de interno', value: vehicle.InternalNumber },
-                { label: 'Capacidad', value: vehicle.AvailableQuantity },
-              ]}
-              onEdit={() => handleEditVehicle(vehicle)}
-              onDelete={() => handleDeleteVehicle(vehicle.VehicleId)}
+              key={price.ReservePriceId}
+              title={price.ServiceName}
+              subtitle={price.Price.toString()}
+              badge={<StatusBadge status={price.Status ? 'Activo' : 'Inactivo'} />}
+              fields={[{ label: 'Tipo de Reserva', value: price.ReserveTypeId }]}
+              onEdit={() => handleEditPrice(price)}
+              onDelete={() => handleDeletePrice(price.ReservePriceId)}
             />
           ))
         ) : (
-          <div className="text-center p-4 border rounded-md">No se encontraron vehiculos.</div>
+          <div className="text-center p-4 border rounded-md">No se encontraron precios.</div>
         )}
       </div>
 
@@ -361,41 +349,52 @@ export default function VehicleManagement() {
       <FormDialog
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
-        title="Añadir Nuevo Vehiculo"
-        description="Crea un nuevo vehiculo completando el formulario a continuación."
-        onSubmit={() => submitAddVehicle()}
-        submitText="Crear Vehiculo"
-        isLoading={addForm.isSubmitting}
+        title="Añadir Nuevo Precio"
+        description="Crea un nuevo precio completando el formulario a continuación."
+        onSubmit={() => submitAddPrice()}
+        submitText="Crear Precio"
       >
-        <FormField label="Tipo" required error={addForm.errors.vehicleTypeId}>
+        <FormField label="Servicio" required error={addForm.errors.serviceId}>
           <ApiSelect
-            value={String(addForm.data.vehicleTypeId)}
-            onValueChange={(value) =>
-              handleSetVehicleType(value, vehicleTypes.find((type) => type.id === value)?.defaultQuantity)
-            }
-            placeholder="Seleccionar tipo"
-            options={vehicleTypes}
+            value={String(addForm.data.serviceId)}
+            onValueChange={(value) => addForm.setField('serviceId', Number(value))}
+            placeholder="Seleccionar servicio"
+            options={services}
             loading={isOptionsLoading}
             error={optionsError}
-            loadingMessage="Cargando tipos de vehículos..."
-            errorMessage="Error al cargar los tipos"
-            emptyMessage="No hay tipos disponibles"
+            loadingMessage="Cargando servicios..."
+            errorMessage="Error al cargar los servicios"
+            emptyMessage="No hay servicios disponibles"
           />
         </FormField>
-        <FormField label="Capacidad disponible" required error={addForm.errors.availableQuantity}>
-          <Input
-            id="availableQuantity"
-            placeholder="Cantidad disponible"
-            value={addForm.data.availableQuantity}
-            onChange={(e) => addForm.setField('availableQuantity', Number(e.target.value))}
+        <FormField label="Tipo de Reserva" required error={addForm.errors.reserveTypeId}>
+          <ApiSelect
+            value={String(addForm.data.reserveTypeId)}
+            onValueChange={(value) => addForm.setField('reserveTypeId', Number(value))}
+            placeholder="Seleccionar tipo de reserva"
+            options={[
+              { id: '1', value: '1', label: 'Solo Ida' },
+              { id: '2', value: '2', label: 'Ida y vuelta' },
+            ]}
+            loading={isOptionsLoading}
+            error={optionsError}
+            loadingMessage="Cargando tipos de reserva..."
+            errorMessage="Error al cargar los tipos de reserva"
+            emptyMessage="No hay tipos de reserva disponibles"
           />
         </FormField>
-        <FormField label="Interno" required error={addForm.errors.internalNumber}>
+        <FormField label="Precio Base ($)" required error={addForm.errors.price}>
           <Input
-            id="internalNumber"
-            placeholder="Número de interno"
-            value={addForm.data.internalNumber}
-            onChange={(e) => addForm.setField('internalNumber', e.target.value)}
+            type="number"
+            value={addForm.data.price || ''}
+            onChange={(e) => {
+              const value = e.target.value === '' ? '' : Number.parseFloat(e.target.value);
+              addForm.setField('price', value);
+            }}
+            min="0.01"
+            step="0.01"
+            placeholder="Ingrese el precio"
+            className="w-full"
           />
         </FormField>
       </FormDialog>
@@ -404,41 +403,44 @@ export default function VehicleManagement() {
       <FormDialog
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
-        title="Editar Vehículo"
-        description="Realiza cambios en los detalles del vehículo a continuación."
-        onSubmit={() => submitEditVehicle()}
+        title="Editar Precio"
+        description="Realiza cambios en los detalles del precio a continuación."
+        onSubmit={() => submitEditPrice()}
         submitText="Guardar Cambios"
-        isLoading={editForm.isSubmitting}
       >
-        <FormField label="Tipo" required error={editForm.errors.vehicleTypeId}>
+        <FormField label="Servicio" required error={editForm.errors.name}>
           <ApiSelect
-            value={String(editForm.data.vehicleTypeId)}
-            onValueChange={(value) => {
-              handleSetVehicleType(value, vehicleTypes.find((type) => type.id === value)?.defaultQuantity);
-            }}
-            placeholder="Seleccionar tipo"
-            options={vehicleTypes}
+            value={String(editForm.data.serviceId)}
+            onValueChange={(value) => editForm.setField('serviceId', Number(value))}
+            placeholder="Seleccionar servicio"
+            options={services}
             loading={isOptionsLoading}
             error={optionsError}
-            loadingMessage="Cargando tipos de vehículos..."
-            errorMessage="Error al cargar los tipos"
-            emptyMessage="No hay tipos disponibles"
+            loadingMessage="Cargando servicios..."
+            errorMessage="Error al cargar los servicios"
+            emptyMessage="No hay servicios disponibles"
           />
         </FormField>
-        <FormField label="Capacidad disponible" required error={editForm.errors.availableQuantity}>
-          <Input
-            id="availableQuantity"
-            placeholder="Cantidad disponible"
-            value={editForm.data.availableQuantity}
-            onChange={(e) => editForm.setField('availableQuantity', Number(e.target.value))}
-          />
+        <FormField label="Tipo de Reserva" required error={editForm.errors.reserveTypeId}>
+          <Select
+            value={String(editForm.data.reserveTypeId)}
+            onValueChange={(value) => editForm.setField('reserveTypeId', Number(value))}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Seleccionar tipo de reserva" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="1">Solo Ida</SelectItem>
+              <SelectItem value="2">Ida y vuelta</SelectItem>
+            </SelectContent>
+          </Select>
         </FormField>
-
-        <FormField label="Numero de Interno" required error={editForm.errors.internalNumber}>
+        <FormField label="Precio" required error={editForm.errors.price}>
           <Input
-            id="edit-internalNumber"
-            value={editForm.data.internalNumber}
-            onChange={(e) => editForm.setField('internalNumber', e.target.value)}
+            id="price"
+            placeholder="Precio"
+            value={editForm.data.price}
+            onChange={(e) => editForm.setField('price', Number(e.target.value))}
           />
         </FormField>
       </FormDialog>

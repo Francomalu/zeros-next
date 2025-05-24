@@ -92,7 +92,7 @@ export default function DriversManagement() {
       const response = await post('/driver-create', addForm.state.data);
       if (response) {
         toast({
-          title: 'Chofer creada',
+          title: 'Chofer creado',
           description: 'El chofer ha sido creado exitosamente',
           variant: 'success',
         });

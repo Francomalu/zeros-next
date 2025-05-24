@@ -27,15 +27,31 @@ import { Service } from '@/interfaces/service';
 import { ApiSelect, SelectOption } from '@/components/dashboard/select';
 import { City } from '@/interfaces/city';
 import { Vehicle } from '@/interfaces/vehicle';
+import { useFormValidation } from '@/hooks/use-form-validation';
+import { getOptionIdByValue } from '@/utils/form-options';
 
 const initialService = {
   name: '',
-  origenId: 0,
+  originId: 0,
   destinationId: 0,
+  startDay: '',
+  endDay: '',
   estimatedDuration: '',
   departureHour: '',
   isHoliday: false,
   vehicleId: 0,
+};
+
+const validationSchema = {
+  name: { required: true, message: 'El nombre es requerido' },
+  originId: { required: true, message: 'El origen es requerido' },
+  destinationId: { required: true, message: 'El destino es requerido' },
+  startDay: { required: true, message: 'El día de inicio es requerido' },
+  endDay: { required: true, message: 'El día de fin es requerido' },
+  estimatedDuration: { required: true, message: 'La duración estimada es requerida' },
+  departureHour: { required: true, message: 'La hora de partida es requerida' },
+  isHoliday: { required: true, message: 'El estado de feriado es requerido' },
+  vehicleId: { required: true, message: 'El vehículo es requerido' },
 };
 
 export default function ServiceManagement() {
@@ -50,8 +66,8 @@ export default function ServiceManagement() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [currentServiceId, setCurrentServiceId] = useState<number | null>(null);
-  const addForm = useFormReducer(initialService);
-  const editForm = useFormReducer(initialService);
+  const addForm = useFormValidation(initialService, validationSchema);
+  const editForm = useFormValidation(initialService, validationSchema);
   const [cities, setCities] = useState<SelectOption[]>([]);
   const [vehicles, setVehicles] = useState<SelectOption[]>([]);
   const [isOptionsLoading, setIsOptionsLoading] = useState(false);
@@ -118,8 +134,8 @@ export default function ServiceManagement() {
       // Cargar ciudades
       if (cityResponse) {
         const formattedCities = cityResponse.Items.map((city: City) => ({
-          id: city.CityId.toString(),
-          value: city.CityId.toString(),
+          id: city.Id.toString(),
+          value: city.Id.toString(),
           label: city.Name,
         }));
         setCities(formattedCities);
@@ -142,88 +158,83 @@ export default function ServiceManagement() {
   };
 
   const submitAddService = async () => {
-    addForm.setLoading(true);
-    try {
-      const response = await post('/service-create', addForm.state.data);
-      if (response) {
-        toast({
-          title: 'Servicio creado',
-          description: 'El servicio ha sido creado exitosamente',
-          variant: 'success',
-        });
-        setIsAddModalOpen(false);
-        fetchServices(); // Refresh the vehicle list
-      } else {
-        addForm.setError('Error al crear el servicio');
+    addForm.handleSubmit(async (data) => {
+      try {
+        const response = await post('/service-create', data);
+        if (response) {
+          toast({
+            title: 'Servicio creado',
+            description: 'El servicio ha sido creado exitosamente',
+            variant: 'success',
+          });
+          setIsAddModalOpen(false);
+          fetchServices(); // Refresh the vehicle list
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Error al crear el servicio',
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
         toast({
           title: 'Error',
-          description: 'Error al crear el servicio',
+          description: 'Ocurrió un error al crear el servicio',
           variant: 'destructive',
         });
       }
-    } catch (error) {
-      addForm.setError('Ocurrió un error al crear el servicio');
-      toast({
-        title: 'Error',
-        description: 'Ocurrió un error al crear el servicio',
-        variant: 'destructive',
-      });
-    } finally {
-      addForm.setLoading(false);
-    }
+    });
   };
 
   const submitEditService = async () => {
-    editForm.setLoading(true);
-    try {
-      const response = await put(`/service-update/${currentServiceId}`, editForm.state.data);
-      if (response) {
-        toast({
-          title: 'Servicio editado',
-          description: 'El servicio ha sido editado exitosamente',
-          variant: 'success',
-        });
-        setIsEditModalOpen(false);
-        fetchServices(); // Refresh the vehicle list
-      } else {
-        addForm.setError('Error al editar el servicio');
+    addForm.handleSubmit(async (data) => {
+      try {
+        const response = await put(`/service-update/${currentServiceId}`, data);
+        if (response) {
+          toast({
+            title: 'Servicio actualizado',
+            description: 'El servicio ha sido actualizado exitosamente',
+            variant: 'success',
+          });
+          setIsEditModalOpen(false);
+          fetchServices(); // Refresh the vehicle list
+        } else {
+          toast({
+            title: 'Error',
+            description: 'Error al actualizar el servicio',
+            variant: 'destructive',
+          });
+        }
+      } catch (error) {
         toast({
           title: 'Error',
-          description: 'Error al editar el servicio',
+          description: 'Ocurrió un error al actualizar el servicio',
           variant: 'destructive',
         });
       }
-    } catch (error) {
-      addForm.setError('Ocurrió un error al editar el servicio');
-      toast({
-        title: 'Error',
-        description: 'Ocurrió un error al editar el servicio',
-        variant: 'destructive',
-      });
-    } finally {
-      addForm.setLoading(false);
-    }
+    });
   };
 
   const handleAddService = () => {
     setCurrentServiceId(null);
-    addForm.setForm(initialService);
+    addForm.resetForm();
     setIsAddModalOpen(true);
     loadAllOptions();
   };
 
   const handleEditService = (service: Service) => {
     setCurrentServiceId(service.ServiceId);
-    editForm.setForm({
-      name: service.Name,
-      origenId: service.OrigenId,
-      destinationId: service.DestinationId,
-      estimatedDuration: service.EstimatedDuration,
-      departureHour: service.DepartureHour,
-      isHoliday: service.IsHoliday,
-      vehicleId: service.Vehicle.vehicleId,
-    });
+    editForm.setField('name', service.Name);
+    editForm.setField('originId', service.OriginId);
+    editForm.setField('destinationId', service.DestinationId);
+    editForm.setField('startDay', service.StartDay);
+    editForm.setField('endDay', service.EndDay);
+    editForm.setField('estimatedDuration', service.EstimatedDuration);
+    editForm.setField('departureHour', service.DepartureHour);
+    editForm.setField('isHoliday', service.IsHoliday);
+    editForm.setField('vehicleId', service.Vehicle.VehicleId);
     setIsEditModalOpen(true);
+    loadAllOptions();
   };
 
   const handleDeleteService = (id: number) => {
@@ -381,116 +392,134 @@ export default function ServiceManagement() {
         onSubmit={() => submitAddService()}
         submitText="Crear Servicio"
       >
-        <FormField label="Nombre">
-          <Input
-            id="name"
-            placeholder="Nombre"
-            value={addForm.state.data.name}
-            onChange={(e) => addForm.setField('name', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Origen">
-          <ApiSelect
-            value={String(addForm.state.data.origenId)}
-            onValueChange={(value) => addForm.setField('origenId', Number(value))}
-            placeholder="Seleccionar origen"
-            options={cities}
-            loading={isOptionsLoading}
-            error={optionsError}
-            loadingMessage="Cargando ciudades..."
-            errorMessage="Error al cargar las ciudades"
-            emptyMessage="No hay ciudades disponibles"
-          />
-        </FormField>
-        <FormField label="Destino">
-          <ApiSelect
-            value={String(addForm.state.data.destinationId)}
-            onValueChange={(value) => addForm.setField('destinationId', Number(value))}
-            placeholder="Seleccionar destino"
-            options={cities.filter((city) => city.id !== String(addForm.state.data.origenId))}
-            disabled={addForm.state.data.origenId === 0}
-            loading={isOptionsLoading}
-            error={optionsError}
-            loadingMessage="Cargando destinos..."
-            errorMessage="Error al cargar los destinos"
-            emptyMessage="No hay destinos disponibles"
-          />
-        </FormField>
-        <FormField label="Dia Inicio">
-          <Select onValueChange={(value) => addForm.setField('startDay', value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar Día" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Lunes</SelectItem>
-              <SelectItem value="2">Martes</SelectItem>
-              <SelectItem value="3">Miercoles</SelectItem>
-              <SelectItem value="4">Jueves</SelectItem>
-              <SelectItem value="5">Viernes</SelectItem>
-              <SelectItem value="6">Sábado</SelectItem>
-              <SelectItem value="0">Domingo</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="Dia Fin">
-          <Select onValueChange={(value) => addForm.setField('endDate', value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar Día" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Lunes</SelectItem>
-              <SelectItem value="2">Martes</SelectItem>
-              <SelectItem value="3">Miercoles</SelectItem>
-              <SelectItem value="4">Jueves</SelectItem>
-              <SelectItem value="5">Viernes</SelectItem>
-              <SelectItem value="6">Sábado</SelectItem>
-              <SelectItem value="0">Domingo</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="Duración Estimada">
-          <Input
-            id="estimatedDuration"
-            placeholder="Duración Estimada"
-            value={addForm.state.data.estimatedDuration}
-            onChange={(e) => addForm.setField('estimatedDuration', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Hora de Partida">
-          <Input
-            id="departureHour"
-            placeholder="Hora de Partida"
-            value={addForm.state.data.departureHour}
-            onChange={(e) => addForm.setField('departureHour', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Feriado">
-          <Select onValueChange={(value) => addForm.setField('isHoliday', value === 'true')}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Sí</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="Vehículo">
-          <ApiSelect
-            value={String(addForm.state.data.vehicleId)}
-            onValueChange={(value) => addForm.setField('vehicleId', Number(value))}
-            placeholder="Seleccionar vehículo"
-            options={vehicles}
-            loading={isOptionsLoading}
-            error={optionsError}
-            loadingMessage="Cargando vehiculos..."
-            errorMessage="Error al cargar los vehículos"
-            emptyMessage="No hay vehículos disponibles"
-          />
-        </FormField>
+        <div className="w-full">
+          <div className="grid grid-cols-1 gap-4">
+            {/* Información Personal */}
+            <div className="w-full">
+              <FormField label="Nombre" required error={addForm.errors.name}>
+                <Input
+                  id="name"
+                  placeholder="Nombre"
+                  value={addForm.data.name}
+                  onChange={(e) => addForm.setField('name', e.target.value)}
+                />
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Origen" required error={addForm.errors.originId}>
+                <ApiSelect
+                  value={String(addForm.data.originId)}
+                  onValueChange={(value) => addForm.setField('originId', Number(value))}
+                  placeholder="Seleccionar origen"
+                  options={cities}
+                  loading={isOptionsLoading}
+                  error={optionsError}
+                  loadingMessage="Cargando ciudades..."
+                  errorMessage="Error al cargar las ciudades"
+                  emptyMessage="No hay ciudades disponibles"
+                />
+              </FormField>
+              <FormField label="Destino" required error={addForm.errors.destinationId}>
+                <ApiSelect
+                  value={String(addForm.data.destinationId)}
+                  onValueChange={(value) => addForm.setField('destinationId', Number(value))}
+                  placeholder="Seleccionar destino"
+                  options={cities.filter((city) => city.id !== String(addForm.data.originId))}
+                  disabled={addForm.data.originId === 0}
+                  loading={isOptionsLoading}
+                  error={optionsError}
+                  loadingMessage="Cargando destinos..."
+                  errorMessage="Error al cargar los destinos"
+                  emptyMessage="No hay destinos disponibles"
+                />
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Dia Inicio" required error={addForm.errors.startDay}>
+                <Select onValueChange={(value) => addForm.setField('startDay', Number(value))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar Día" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Lunes</SelectItem>
+                    <SelectItem value="2">Martes</SelectItem>
+                    <SelectItem value="3">Miercoles</SelectItem>
+                    <SelectItem value="4">Jueves</SelectItem>
+                    <SelectItem value="5">Viernes</SelectItem>
+                    <SelectItem value="6">Sábado</SelectItem>
+                    <SelectItem value="0">Domingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Dia Fin" required error={addForm.errors.endDay}>
+                <Select onValueChange={(value) => addForm.setField('endDay', Number(value))}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar Día" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Lunes</SelectItem>
+                    <SelectItem value="2">Martes</SelectItem>
+                    <SelectItem value="3">Miercoles</SelectItem>
+                    <SelectItem value="4">Jueves</SelectItem>
+                    <SelectItem value="5">Viernes</SelectItem>
+                    <SelectItem value="6">Sábado</SelectItem>
+                    <SelectItem value="0">Domingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Duración Estimada" required error={addForm.errors.estimatedDuration}>
+                <Input
+                  id="estimatedDuration"
+                  placeholder="Duración Estimada"
+                  value={addForm.data.estimatedDuration}
+                  onChange={(e) => addForm.setField('estimatedDuration', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Hora de Partida" required error={addForm.errors.departureHour}>
+                <Input
+                  id="departureHour"
+                  placeholder="Hora de Partida"
+                  value={addForm.data.departureHour}
+                  onChange={(e) => addForm.setField('departureHour', e.target.value)}
+                />
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Feriado" required error={addForm.errors.isHoliday}>
+                <Select onValueChange={(value) => addForm.setField('isHoliday', value === 'true')}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Sí</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Vehículo" required error={addForm.errors.vehicleId}>
+                <ApiSelect
+                  value={String(addForm.data.vehicleId)}
+                  onValueChange={(value) => addForm.setField('vehicleId', Number(value))}
+                  placeholder="Seleccionar vehículo"
+                  options={vehicles}
+                  loading={isOptionsLoading}
+                  error={optionsError}
+                  loadingMessage="Cargando vehiculos..."
+                  errorMessage="Error al cargar los vehículos"
+                  emptyMessage="No hay vehículos disponibles"
+                />
+              </FormField>
+            </div>
+          </div>
+        </div>
       </FormDialog>
 
+      {/* Add Customer Modal */}
+
       {/* Edit Customer Modal */}
+
       <FormDialog
         open={isEditModalOpen}
         onOpenChange={setIsEditModalOpen}
@@ -499,110 +528,125 @@ export default function ServiceManagement() {
         onSubmit={() => submitEditService()}
         submitText="Guardar Cambios"
       >
-        <FormField label="Nombre">
-          <Input
-            id="edit-name"
-            value={editForm.state.data.name}
-            onChange={(e) => editForm.setField('name', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Origen">
-          <ApiSelect
-            value={String(editForm.state.data.origenId)}
-            onValueChange={(value) => editForm.setField('origenId', Number(value))}
-            placeholder="Seleccionar origen"
-            options={cities}
-            loading={isOptionsLoading}
-            error={optionsError}
-            loadingMessage="Cargando ciudades..."
-            errorMessage="Error al cargar las ciudades"
-            emptyMessage="No hay ciudades disponibles"
-          />
-        </FormField>
-        <FormField label="Destino">
-          <ApiSelect
-            value={String(editForm.state.data.destinationId)}
-            onValueChange={(value) => editForm.setField('destinationId', Number(value))}
-            placeholder="Seleccionar destino"
-            options={cities.filter((city) => city.id !== String(editForm.state.data.origenId))}
-            disabled={editForm.state.data.origenId === 0}
-            loading={isOptionsLoading}
-            error={optionsError}
-            loadingMessage="Cargando destinos..."
-            errorMessage="Error al cargar los destinos"
-            emptyMessage="No hay destinos disponibles"
-          />
-        </FormField>
-        <FormField label="Dia Inicio">
-          <Select onValueChange={(value) => editForm.setField('startDay', value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar Día" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Lunes</SelectItem>
-              <SelectItem value="2">Martes</SelectItem>
-              <SelectItem value="3">Miercoles</SelectItem>
-              <SelectItem value="4">Jueves</SelectItem>
-              <SelectItem value="5">Viernes</SelectItem>
-              <SelectItem value="6">Sábado</SelectItem>
-              <SelectItem value="0">Domingo</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="Dia Fin">
-          <Select onValueChange={(value) => editForm.setField('endDate', value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar Día" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="1">Lunes</SelectItem>
-              <SelectItem value="2">Martes</SelectItem>
-              <SelectItem value="3">Miercoles</SelectItem>
-              <SelectItem value="4">Jueves</SelectItem>
-              <SelectItem value="5">Viernes</SelectItem>
-              <SelectItem value="6">Sábado</SelectItem>
-              <SelectItem value="0">Domingo</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="Duración Estimada">
-          <Input
-            id="edit-estimatedDuration"
-            value={editForm.state.data.estimatedDuration}
-            onChange={(e) => editForm.setField('estimatedDuration', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Hora de Partida">
-          <Input
-            id="edit-departureHour"
-            value={editForm.state.data.departureHour}
-            onChange={(e) => editForm.setField('departureHour', e.target.value)}
-          />
-        </FormField>
-        <FormField label="Feriado">
-          <Select onValueChange={(value) => editForm.setField('isHoliday', value === 'true')}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="true">Sí</SelectItem>
-              <SelectItem value="false">No</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
-        <FormField label="Vehículo">
-          <ApiSelect
-            value={String(editForm.state.data.vehicleId)}
-            onValueChange={(value) => editForm.setField('vehicleId', Number(value))}
-            placeholder="Seleccionar vehículo"
-            options={vehicles}
-            loading={isOptionsLoading}
-            error={optionsError}
-            loadingMessage="Cargando vehiculos..."
-            errorMessage="Error al cargar los vehículos"
-            emptyMessage="No hay vehículos disponibles"
-          />
-        </FormField>
+        <div className="w-full">
+          <div className="grid grid-cols-1 gap-4">
+            <div className="w-full">
+              <FormField label="Nombre" required error={editForm.errors.name}>
+                <Input
+                  id="edit-name"
+                  placeholder="Nombre"
+                  value={editForm.data.name}
+                  onChange={(e) => editForm.setField('name', e.target.value)}
+                />
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Origen" required error={editForm.errors.originId}>
+                <ApiSelect
+                  value={String(editForm.data.originId)}
+                  onValueChange={(value) => editForm.setField('originId', Number(value))}
+                  placeholder="Seleccionar origen"
+                  options={cities}
+                  loading={isOptionsLoading}
+                  error={optionsError}
+                  loadingMessage="Cargando ciudades..."
+                  errorMessage="Error al cargar las ciudades"
+                  emptyMessage="No hay ciudades disponibles"
+                />
+              </FormField>
+              <FormField label="Destino" required error={editForm.errors.destinationId}>
+                <ApiSelect
+                  value={String(editForm.data.destinationId)}
+                  onValueChange={(value) => editForm.setField('destinationId', Number(value))}
+                  placeholder="Seleccionar destino"
+                  options={cities.filter((city) => city.id !== String(editForm.data.originId))}
+                  disabled={editForm.data.originId === 0}
+                  loading={isOptionsLoading}
+                  error={optionsError}
+                  loadingMessage="Cargando destinos..."
+                  errorMessage="Error al cargar los destinos"
+                  emptyMessage="No hay destinos disponibles"
+                />
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Dia Inicio" required error={editForm.errors.startDay}>
+                <Select onValueChange={(value) => editForm.setField('startDay', value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar Día" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Lunes</SelectItem>
+                    <SelectItem value="2">Martes</SelectItem>
+                    <SelectItem value="3">Miercoles</SelectItem>
+                    <SelectItem value="4">Jueves</SelectItem>
+                    <SelectItem value="5">Viernes</SelectItem>
+                    <SelectItem value="6">Sábado</SelectItem>
+                    <SelectItem value="0">Domingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Dia Fin" required error={editForm.errors.endDay}>
+                <Select onValueChange={(value) => editForm.setField('endDate', value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar Día" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Lunes</SelectItem>
+                    <SelectItem value="2">Martes</SelectItem>
+                    <SelectItem value="3">Miercoles</SelectItem>
+                    <SelectItem value="4">Jueves</SelectItem>
+                    <SelectItem value="5">Viernes</SelectItem>
+                    <SelectItem value="6">Sábado</SelectItem>
+                    <SelectItem value="0">Domingo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Duración Estimada" required error={editForm.errors.estimatedDuration}>
+                <Input
+                  id="edit-estimatedDuration"
+                  value={editForm.data.estimatedDuration}
+                  onChange={(e) => editForm.setField('estimatedDuration', e.target.value)}
+                />
+              </FormField>
+              <FormField label="Hora de Partida">
+                <Input
+                  id="edit-departureHour"
+                  value={editForm.data.departureHour}
+                  onChange={(e) => editForm.setField('departureHour', e.target.value)}
+                />
+              </FormField>
+            </div>
+            <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Feriado" required error={editForm.errors.isHoliday}>
+                <Select onValueChange={(value) => editForm.setField('isHoliday', value === 'true')}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Seleccionar" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="true">Sí</SelectItem>
+                    <SelectItem value="false">No</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+              <FormField label="Vehículo" required error={editForm.errors.vehicleId}>
+                <ApiSelect
+                  value={String(editForm.data.vehicleId)}
+                  onValueChange={(value) => editForm.setField('vehicleId', Number(value))}
+                  placeholder="Seleccionar vehículo"
+                  options={vehicles}
+                  loading={isOptionsLoading}
+                  error={optionsError}
+                  loadingMessage="Cargando vehiculos..."
+                  errorMessage="Error al cargar los vehículos"
+                  emptyMessage="No hay vehículos disponibles"
+                />
+              </FormField>
+            </div>
+          </div>
+        </div>
       </FormDialog>
 
       {/* Delete Confirmation Modal */}

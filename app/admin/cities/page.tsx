@@ -149,7 +149,7 @@ export default function CitiesManagement() {
   };
 
   const handleEditCity = (city: City) => {
-    setCurrentCityId(city.CityId);
+    setCurrentCityId(city.Id);
     editForm.setForm({
       code: city.Code,
       name: city.Name,
@@ -204,7 +204,7 @@ export default function CitiesManagement() {
             size="sm"
             variant="outline"
             className="h-8 text-red-600 border-red-200 hover:bg-red-50"
-            onClick={() => handleDeleteCity(city.CityId)}
+            onClick={() => handleDeleteCity(city.Id)}
           >
             <Trash className="h-4 w-4" />
           </Button>
@@ -280,15 +280,15 @@ export default function CitiesManagement() {
             </Card>
           ))
         ) : citiesData.Items.length > 0 ? (
-          citiesData.Items.map((city) => (
+          citiesData.Items.map((city: City) => (
             <MobileCard
-              key={city.CityId}
+              key={city.Id}
               title={city.Name}
               subtitle={city.Code.toString()}
               badge={<StatusBadge status={city.Status ? 'Activo' : 'Inactivo'} />}
               fields={[]}
               onEdit={() => handleEditCity(city)}
-              onDelete={() => handleDeleteCity(city.CityId)}
+              onDelete={() => handleDeleteCity(city.Id)}
             />
           ))
         ) : (

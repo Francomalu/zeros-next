@@ -179,7 +179,7 @@ export function ApiSelect({
     }
 
     return filteredOptions.map((option) => (
-      <SelectItem key={option.id.toString()} value={option.value.toString()}>
+      <SelectItem key={`${option.id}-${option.label}`} value={option.value.toString()}>
         {option.label}
       </SelectItem>
     ));

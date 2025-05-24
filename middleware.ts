@@ -25,13 +25,12 @@ const routeConfigs: Record<string, RouteConfig> = {
   // "/admin/settings": { roles: ["Admin"], redirectTo: "/unauthorized" },
 
   // Rutas de usuario (empleados)
-  "/user": { roles: ["User"], redirectTo: "/unauthorized" },
-  "/user/bookings": { roles: ["User"], redirectTo: "/unauthorized" },
+  "/admin/reserves": { roles: ["User"], redirectTo: "/unauthorized" },
+  "/admin/passengers": { roles: ["User"], redirectTo: "/unauthorized" },
 
   // Rutas de cliente
-  "/account": { roles: ["Admin", "Client"], redirectTo: "/unauthorized" },
-  "/account/bookings": { roles: ["Admin", "Client"], redirectTo: "/unauthorized" },
-  "/account/profile": { roles: ["Admin", "Client"], redirectTo: "/unauthorized" },
+  "/passengers/bookings": { roles: ["Client"], redirectTo: "/unauthorized" },
+  "/passengers/profile": { roles: ["Client"], redirectTo: "/unauthorized" },
 }
 
 // Rutas públicas que no requieren autenticación

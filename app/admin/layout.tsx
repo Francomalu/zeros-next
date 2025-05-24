@@ -66,17 +66,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       name: 'Reservas',
       icon: Calendar,
       path: '/admin/reserves',
-      roles: ['admin', 'cliente'],
+      roles: ['admin', 'user'],
     },
     {
-      name: 'Clientes',
+      name: 'Pasajeros',
       icon: Users,
-      path: '/admin/clientes',
-      key: 'clients',
-      roles: ['admin'],
+      path: '/admin/passengers',
+      key: 'passengers',
+      roles: ['admin', 'user'],
       submenu: [
-        { name: 'Lista', path: '/admin/clientes/lista', roles: ['admin'] },
-        { name: 'Deudas', path: '/admin/clientes/deudas', roles: ['admin'] },
+        { name: 'Lista', path: '/admin/passengers/list', roles: ['admin', 'user'] },
+        { name: 'Deudas', path: '/admin/passengers/deudas', roles: ['admin', 'user'] },
       ],
     },
     {
@@ -140,13 +140,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     {
       name: 'Precios',
       icon: CreditCard,
-      path: '/precios',
+      path: '/admin/prices',
       roles: ['admin'],
     },
     {
       name: 'Mis Datos',
       icon: UserCheck,
-      path: '/mis-datos',
+      path: '/passengers/profile',
+      roles: ['cliente'],
+    },
+    {
+      name: 'Mis Reservas',
+      icon: Calendar,
+      path: '/passengers/bookings',
       roles: ['cliente'],
     },
   ];

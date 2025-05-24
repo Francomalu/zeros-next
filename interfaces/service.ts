@@ -2,12 +2,12 @@
 export interface Service {
   ServiceId: 0;
   Name: string;
-  OrigenId: number;
+  OriginId: number;
   OriginName: string;
   DestinationId: number;
   DestinationName: string;
-  StartDate: string;
-  EndDate: string;
+  StartDay: string;
+  EndDay: string;
   EstimatedDuration: string;
   DepartureHour: string;
   IsHoliday: true;
@@ -17,7 +17,7 @@ export interface Service {
     fullQuantity: 0;
     vehicleTypeName: string;
     image: string;
-    vehicleId: number;
+    VehicleId: number;
   };
   Status: string;
 }
